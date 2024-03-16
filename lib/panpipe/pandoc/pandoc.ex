@@ -21,12 +21,12 @@ defmodule Panpipe.Pandoc do
   @doc """
   The version of the Pandoc runtime Panpipe is using.
   """
-  def version, do: extract_from_version_string(~R/pandoc (\d+\.\d+.*)/)
+  def version, do: extract_from_version_string(~r/pandoc (\d+\.\d+.*)/)
 
   @doc """
   The data directory of the Pandoc runtime Panpipe is using.
   """
-  def data_dir, do: extract_from_version_string(~R/Default user data directory: (.+)/)
+  def data_dir, do: extract_from_version_string(~r/Default user data directory: (.+)/)
 
   defp extract_from_version_string(regex) do
     with {:ok, version_string} <- call(version: true),
@@ -128,11 +128,8 @@ defmodule Panpipe.Pandoc do
   def call(input_or_opts, opts \\ nil) do
     opts = normalize_opts(input_or_opts, opts)
 
-    with {:ok, %Rambo{status: 0} = result} <- exec(opts) do
+    with {:ok, result} <- exec(opts) do
       {:ok, output(result, opts)}
-    else
-      {:error, error} ->
-        {:error, error}
     end
   end
 
@@ -158,17 +155,30 @@ defmodule Panpipe.Pandoc do
   defp exec(opts) do
     case Keyword.pop(opts, :input) do
       {input_file, opts} when is_binary(input_file) ->
-        Rambo.run(@pandoc, [input_file | build_opts(opts)])
+        do_exec([input_file | build_opts(opts)])
 
       {{:data, data}, opts} ->
-        Rambo.run(@pandoc, build_opts(opts), in: data)
+        do_exec(build_opts(opts), input: data)
 
       {nil, _} ->
         if non_conversion_command?(opts) do
-          Rambo.run(@pandoc, build_opts(opts))
+          do_exec(build_opts(opts))
         else
           raise "No input specified."
         end
+    end
+  end
+
+  defp do_exec(args, opts \\ []) do
+    try do
+      result =
+        [@pandoc | args]
+        |> ExCmd.stream!(opts)
+        |> Enum.into("")
+
+      {:ok, result}
+    rescue
+      e -> {:error, e}
     end
   end
 
@@ -178,7 +188,7 @@ defmodule Panpipe.Pandoc do
 
   defp output(result, opts) do
     case Keyword.get(opts, :output) do
-      nil -> result.out
+      nil -> result
       _file -> nil
     end
   end

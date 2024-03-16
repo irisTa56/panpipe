@@ -11,7 +11,7 @@ defmodule Panpipe.MixProject do
       version: @version,
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
-      compilers: Mix.compilers() ++ [:protocol_ex, :rambo],
+      compilers: Mix.compilers() ++ [:protocol_ex],
       deps: deps(),
 
       # Hex
@@ -56,7 +56,7 @@ defmodule Panpipe.MixProject do
     [
       {:jason, "~> 1.0"},
       {:protocol_ex, "~> 0.4"},
-      {:rambo, "~> 0.2"},
+      {:ex_cmd, "~> 0.10.0"},
 
       # Development
       {:stream_data, "~> 0.5", only: :test},
